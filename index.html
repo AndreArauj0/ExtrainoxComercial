@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orçamentos | Protótipo local</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="quote-nav" aria-label="Módulo Comercial">
+        <div class="brand-row">
+          <div>
+            <strong>Módulo Comercial</strong>
+            <span>Propostas e orçamentos</span>
+          </div>
+          <button class="icon-button" id="newQuoteButton" type="button" title="Novo orçamento" aria-label="Novo orçamento">+</button>
+        </div>
+
+        <nav class="module-nav" aria-label="Navegação do módulo comercial">
+          <button class="module-button is-active" type="button" data-screen="propostas">Propostas</button>
+          <button class="module-button" type="button" data-screen="lista">Propostas em Lista</button>
+        </nav>
+
+        <label class="search-box">
+          <span>Buscar</span>
+          <input id="searchInput" type="search" placeholder="Cliente, número ou item" autocomplete="off" />
+        </label>
+
+        <div class="status-tabs" role="tablist" aria-label="Filtro por status">
+          <button class="status-tab is-active" type="button" data-filter="todos">Todos</button>
+          <button class="status-tab" type="button" data-filter="rascunho">Rascunho</button>
+          <button class="status-tab" type="button" data-filter="enviado">Enviado</button>
+          <button class="status-tab" type="button" data-filter="aprovado">Aprovado</button>
+        </div>
+
+        <div class="nav-section-title">Propostas recentes</div>
+        <div class="quote-list" id="quoteList" aria-live="polite"></div>
+      </aside>
+
+      <main class="workspace">
+        <section class="screen" id="proposalScreen">
+          <div id="proposalOverview">
+            <header class="topbar">
+              <div>
+                <p class="eyebrow">Módulo Comercial</p>
+                <h1>Propostas</h1>
+              </div>
+              <div class="topbar-actions">
+                <button class="primary-button" id="newQuoteOverviewButton" type="button">Nova proposta</button>
+              </div>
+            </header>
+
+            <section class="stat-grid" aria-label="Resumo das propostas">
+              <article class="stat-card">
+                <span>Total em propostas</span>
+                <strong id="overviewTotalValue">R$ 0,00</strong>
+              </article>
+              <article class="stat-card">
+                <span>Rascunhos</span>
+                <strong id="overviewDraftCount">0</strong>
+              </article>
+              <article class="stat-card">
+                <span>Enviadas</span>
+                <strong id="overviewSentCount">0</strong>
+              </article>
+              <article class="stat-card">
+                <span>Aprovadas</span>
+                <strong id="overviewApprovedCount">0</strong>
+              </article>
+            </section>
+
+            <section class="panel list-panel" aria-label="Orçamentos cadastrados">
+              <div class="section-heading">
+                <h2>Orçamentos cadastrados</h2>
+                <div class="list-metrics">
+                  <span id="overviewProposalCount">0 propostas</span>
+                  <span id="overviewItemCount">0 itens</span>
+                  <strong id="overviewGrandTotal">R$ 0,00</strong>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+                <table class="overview-table">
+                  <thead>
+                    <tr>
+                      <th>Núm. orçamento</th>
+                      <th>Empresa</th>
+                      <th>Cliente</th>
+                      <th>CNPJ</th>
+                      <th>Solicitante</th>
+                      <th>Itens</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Última alteração</th>
+                    </tr>
+                  </thead>
+                  <tbody id="proposalOverviewBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <div id="proposalEditor" class="is-hidden">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Baseado na planilha atual</p>
+            <h1 id="quoteTitle">Novo orçamento</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="backToProposalsButton" type="button">Voltar</button>
+            <button class="ghost-button" id="duplicateButton" type="button">Duplicar</button>
+            <button class="ghost-button danger-text" id="deleteButton" type="button">Excluir</button>
+            <button class="ghost-button" id="exportButton" type="button">Exportar JSON</button>
+            <label class="ghost-button file-button">
+              Importar JSON
+              <input id="importInput" type="file" accept="application/json" />
+            </label>
+            <button class="primary-button" id="printButton" type="button">Imprimir proposta</button>
+          </div>
+        </header>
+
+        <section class="edit-grid" aria-label="Editor de orçamento">
+          <form class="details-stack" id="quoteForm">
+            <section class="panel details-panel">
+              <div class="section-heading">
+                <h2>Identificação</h2>
+                <div class="save-state" id="saveState">Salvo localmente</div>
+              </div>
+              <div class="compact-form-grid">
+                <label>
+                  Núm. orçamento
+                  <input name="number" type="text" required />
+                </label>
+                <label>
+                  Empresa
+                  <select name="company">
+                    <option value="EXTRAINOX">EXTRAINOX</option>
+                    <option value="EXTRAFRIO">EXTRAFRIO</option>
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select name="status">
+                    <option value="rascunho">Rascunho</option>
+                    <option value="enviado">Enviado</option>
+                    <option value="aprovado">Aprovado</option>
+                    <option value="revisao">Em revisão</option>
+                    <option value="recusado">Recusado</option>
+                  </select>
+                </label>
+                <label>
+                  Incluído por
+                  <input name="includedBy" type="text" />
+                </label>
+              </div>
+            </section>
+
+            <section class="panel details-panel">
+              <div class="section-heading">
+                <h2>Cliente</h2>
+              </div>
+              <div class="compact-form-grid">
+                <label class="span-2">
+                  Nome fantasia
+                  <input name="client" type="text" placeholder="Nome do cliente" required />
+                </label>
+                <label class="span-2">
+                  Razão social
+                  <input name="legalName" type="text" />
+                </label>
+                <label>
+                  CNPJ
+                  <input name="cnpj" type="text" />
+                </label>
+                <label>
+                  Solicitante
+                  <input name="requester" type="text" />
+                </label>
+                <label>
+                  Fone
+                  <input name="phone" type="text" />
+                </label>
+                <label>
+                  E-mail
+                  <input name="email" type="email" />
+                </label>
+              </div>
+            </section>
+
+            <section class="panel details-panel">
+              <div class="section-heading">
+                <h2>Endereço</h2>
+              </div>
+              <div class="address-line-grid">
+                <label class="address-main">
+                  Endereço
+                  <input name="address" type="text" />
+                </label>
+                <label>
+                  Número
+                  <input name="addressNumber" type="text" />
+                </label>
+                <label>
+                  Bairro
+                  <input name="district" type="text" />
+                </label>
+                <label>
+                  Cidade
+                  <input name="city" type="text" />
+                </label>
+                <label>
+                  UF
+                  <input name="state" type="text" maxlength="2" placeholder="PR" />
+                </label>
+                <label>
+                  CEP
+                  <input name="zipCode" type="text" />
+                </label>
+              </div>
+            </section>
+
+            <section class="panel details-panel">
+              <div class="section-heading">
+                <h2>Condições comerciais</h2>
+              </div>
+              <div class="compact-form-grid">
+                <label>
+                  Pagamento
+                  <input name="paymentTerms" type="text" placeholder="30 dias" />
+                </label>
+                <label>
+                  Entrega
+                  <input name="deliveryTime" type="text" placeholder="30 dias" />
+                </label>
+                <label>
+                  Validade
+                  <input name="proposalValidity" type="text" placeholder="10 dias" />
+                </label>
+                <label>
+                  Frete
+                  <input name="freightType" type="text" placeholder="CIF / FOB" />
+                </label>
+              </div>
+              <label class="full-label">
+                Observações comerciais
+                <textarea name="notes" rows="3" placeholder="Inclua garantias, escopo, exclusões ou premissas relevantes."></textarea>
+              </label>
+            </section>
+          </form>
+
+        </section>
+
+        <section class="panel item-panel" aria-label="Itens do orçamento">
+          <div class="section-heading">
+            <h2>Itens</h2>
+            <button class="secondary-button" id="addItemButton" type="button">Adicionar item</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th>Qtd.</th>
+                  <th>NCM</th>
+                  <th>Preço líquido</th>
+                  <th>BC ICMS</th>
+                  <th>ICMS %</th>
+                  <th>IPI %</th>
+                  <th>Valor un.</th>
+                  <th>Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="itemsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel summary-panel summary-panel-bottom" aria-label="Resumo financeiro">
+          <div class="section-heading">
+            <h2>Resumo do orçamento</h2>
+            <span class="quote-pill" id="statusPill">Rascunho</span>
+          </div>
+
+          <div class="summary-card-grid">
+            <div class="summary-card">
+              <span>Preço líquido</span>
+              <strong id="liquidTotal">R$ 0,00</strong>
+            </div>
+            <div class="summary-card">
+              <span>ICMS total</span>
+              <strong id="icmsTotal">R$ 0,00</strong>
+            </div>
+            <div class="summary-card">
+              <span>IPI total</span>
+              <strong id="ipiTotal">R$ 0,00</strong>
+            </div>
+            <div class="summary-card">
+              <span>PIS/COFINS total</span>
+              <strong id="pisCofinsTotal">R$ 0,00</strong>
+            </div>
+            <div class="summary-card is-total">
+              <span>Total proposto</span>
+              <strong id="grandTotal">R$ 0,00</strong>
+            </div>
+          </div>
+
+          <div class="summary-adjustments">
+            <span><strong id="itemCount">0</strong> itens</span>
+            <span>Frete / despesas: <strong id="freightTotal">R$ 0,00</strong></span>
+            <label>
+              Ajustar frete
+              <input name="freight" form="quoteForm" type="number" min="0" step="0.01" />
+            </label>
+          </div>
+        </section>
+          </div>
+        </section>
+
+        <section class="screen is-hidden" id="proposalListScreen">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Módulo Comercial</p>
+              <h1>Propostas em Lista</h1>
+            </div>
+            <div class="topbar-actions">
+              <button class="ghost-button" id="openSelectedProposalButton" type="button">Abrir proposta selecionada</button>
+              <button class="primary-button" id="newQuoteListButton" type="button">Nova proposta</button>
+            </div>
+          </header>
+
+          <section class="panel list-panel" aria-label="Todas as propostas em lista">
+            <div class="section-heading">
+              <h2>Espelho da planilha</h2>
+              <div class="list-metrics">
+                <span id="listProposalCount">0 propostas</span>
+                <span id="listItemCount">0 itens</span>
+                <strong id="listGrandTotal">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="proposal-list-table">
+                <thead>
+                  <tr>
+                    <th>Empresa</th>
+                    <th>Núm. orçamento</th>
+                    <th>Nome fantasia</th>
+                    <th>CNPJ</th>
+                    <th>Código</th>
+                    <th>Produto</th>
+                    <th>QTD</th>
+                    <th>NCM</th>
+                    <th>UF</th>
+                    <th>Preço Net</th>
+                    <th>Preço líquido</th>
+                    <th>% BC ICMS</th>
+                    <th>% ICMS</th>
+                    <th>% IPI</th>
+                    <th>Coeficiente</th>
+                    <th>Prod. c/ ICMS</th>
+                    <th>ICMS R$</th>
+                    <th>Base IPI</th>
+                    <th>IPI R$</th>
+                    <th>Base ICMS</th>
+                    <th>Valor unit. total</th>
+                    <th>ICMS total</th>
+                    <th>IPI total</th>
+                    <th>Valor total</th>
+                    <th>Razão social</th>
+                    <th>Endereço</th>
+                    <th>N°</th>
+                    <th>Bairro</th>
+                    <th>Cidade</th>
+                    <th>UF II</th>
+                    <th>CEP</th>
+                    <th>Fone</th>
+                    <th>E-mail</th>
+                    <th>Solicitante</th>
+                    <th>Pagamento</th>
+                    <th>Entrega</th>
+                    <th>Validade</th>
+                    <th>Frete</th>
+                    <th>Incluído por</th>
+                  </tr>
+                </thead>
+                <tbody id="proposalRowsBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <template id="quoteItemTemplate">
+      <button class="quote-card" type="button">
+        <span class="quote-card-top">
+          <strong data-role="number"></strong>
+          <em data-role="status"></em>
+        </span>
+        <span data-role="client"></span>
+        <small data-role="total"></small>
+      </button>
+    </template>
+
+    <template id="lineItemTemplate">
+      <tr>
+        <td><input data-field="code" type="text" placeholder="1634.1" /></td>
+        <td><input data-field="description" type="text" placeholder="Produto" /></td>
+        <td><input data-field="quantity" type="number" min="0" step="0.01" /></td>
+        <td><input data-field="ncm" type="text" placeholder="9403.20.90" /></td>
+        <td><input data-field="liquidPrice" type="number" min="0" step="0.01" /></td>
+        <td><input data-field="icmsBase" type="number" min="0" step="0.0001" /></td>
+        <td><input data-field="icms" type="number" min="0" step="0.0001" /></td>
+        <td><input data-field="ipi" type="number" min="0" step="0.0001" /></td>
+        <td class="money-cell" data-role="unitTotal">R$ 0,00</td>
+        <td class="money-cell" data-role="lineTotal">R$ 0,00</td>
+        <td><button class="icon-button danger" data-role="remove" type="button" title="Remover item" aria-label="Remover item">x</button></td>
+      </tr>
+    </template>
+
+    <script src="./tax-rules.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
