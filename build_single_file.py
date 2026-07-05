@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-APP = ROOT / "app"
-OUTPUT = ROOT / "outputs" / "orcamentos-app-local.html"
+ROOT = Path(__file__).resolve().parent
+APP = ROOT
+OUTPUT = ROOT / "orcamentos-app-local.html"
 
 
 def main() -> None:

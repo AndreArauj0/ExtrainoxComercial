@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
@@ -20,6 +20,11 @@
         <nav class="module-nav" aria-label="Navegação do módulo comercial">
           <button class="module-button is-active" type="button" data-screen="propostas">Propostas</button>
           <button class="module-button" type="button" data-screen="lista">Propostas em Lista</button>
+          <button class="module-button" type="button" data-screen="empresas">Empresas</button>
+          <button class="module-button" type="button" data-screen="representantes">Representantes</button>
+          <button class="module-button" type="button" data-screen="comissoes">Comissões</button>
+          <button class="module-button" type="button" data-screen="frete">Frete</button>
+          <button class="module-button" type="button" data-screen="fiscal">Regra Fiscal</button>
         </nav>
 
         <label class="search-box">
@@ -31,7 +36,10 @@
           <button class="status-tab is-active" type="button" data-filter="todos">Todos</button>
           <button class="status-tab" type="button" data-filter="rascunho">Rascunho</button>
           <button class="status-tab" type="button" data-filter="enviado">Enviado</button>
+          <button class="status-tab" type="button" data-filter="negociacao">Negociação</button>
           <button class="status-tab" type="button" data-filter="aprovado">Aprovado</button>
+          <button class="status-tab" type="button" data-filter="reprovado">Reprovado</button>
+          <button class="status-tab" type="button" data-filter="expirado">Expirado</button>
         </div>
 
         <div class="nav-section-title">Propostas recentes</div>
@@ -47,7 +55,12 @@
                 <h1>Propostas</h1>
               </div>
               <div class="topbar-actions">
-                <button class="primary-button" id="newQuoteOverviewButton" type="button">Nova proposta</button>
+                <button class="ghost-button" id="exportBackupButton" type="button">Exportar dados</button>
+                <label class="ghost-button file-button">
+                  Importar dados
+                  <input id="importBackupInput" type="file" accept="application/json" />
+                </label>
+                <button class="primary-button" id="newQuoteOverviewButton" type="button">Novo orçamento</button>
               </div>
             </header>
 
@@ -84,7 +97,8 @@
                 <table class="overview-table">
                   <thead>
                     <tr>
-                      <th>Núm. orçamento</th>
+                      <th><button class="table-sort-button" id="sortOverviewNumberButton" type="button">Núm. orçamento <span id="sortOverviewNumberIcon">↕</span></button></th>
+                      <th>Proposta</th>
                       <th>Empresa</th>
                       <th>Cliente</th>
                       <th>CNPJ</th>
@@ -116,7 +130,9 @@
               Importar JSON
               <input id="importInput" type="file" accept="application/json" />
             </label>
-            <button class="primary-button" id="printButton" type="button">Imprimir proposta</button>
+            <button class="secondary-button" id="saveQuoteButton" type="button">Salvar</button>
+            <button class="ghost-button" id="previewPdfButton" type="button">Prévia PDF</button>
+            <button class="primary-button" id="printButton" type="button">Baixar PDF da prévia</button>
           </div>
         </header>
 
@@ -134,24 +150,38 @@
                 </label>
                 <label>
                   Empresa
-                  <select name="company">
-                    <option value="EXTRAINOX">EXTRAINOX</option>
-                    <option value="EXTRAFRIO">EXTRAFRIO</option>
-                  </select>
+                  <select name="company"></select>
                 </label>
                 <label>
                   Status
                   <select name="status">
                     <option value="rascunho">Rascunho</option>
-                    <option value="enviado">Enviado</option>
+                    <option value="enviado">Enviada ao cliente</option>
+                    <option value="negociacao">Em negociação</option>
                     <option value="aprovado">Aprovado</option>
-                    <option value="revisao">Em revisão</option>
-                    <option value="recusado">Recusado</option>
+                    <option value="reprovado">Reprovado</option>
+                    <option value="cancelado">Cancelado</option>
+                    <option value="expirado">Expirado</option>
                   </select>
+                </label>
+                <label>
+                  Proposta
+                  <input name="revision" type="text" placeholder="Proposta 01" readonly />
                 </label>
                 <label>
                   Incluído por
                   <input name="includedBy" type="text" />
+                </label>
+                <label>
+                  Tem representante?
+                  <select name="hasRepresentative">
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </label>
+                <label id="representativeField" class="span-2 is-hidden">
+                  Representante
+                  <select name="representativeId"></select>
                 </label>
               </div>
             </section>
@@ -159,6 +189,9 @@
             <section class="panel details-panel">
               <div class="section-heading">
                 <h2>Cliente</h2>
+                <div class="lookup-actions">
+                  <span class="lookup-status" id="cnpjLookupStatus" aria-live="polite"></span>
+                </div>
               </div>
               <div class="compact-form-grid">
                 <label class="span-2">
@@ -171,7 +204,10 @@
                 </label>
                 <label>
                   CNPJ
-                  <input name="cnpj" type="text" />
+                  <span class="lookup-input">
+                    <input name="cnpj" type="text" />
+                    <button class="icon-button lookup-icon-button" id="lookupCnpjButton" type="button" title="Buscar CNPJ" aria-label="Buscar CNPJ">🔍</button>
+                  </span>
                 </label>
                 <label>
                   Solicitante
@@ -222,12 +258,37 @@
 
             <section class="panel details-panel">
               <div class="section-heading">
-                <h2>Condições comerciais</h2>
+                <h2>Propostas do orçamento</h2>
+                <button class="secondary-button" id="createRevisionButton" type="button">Adicionar proposta</button>
               </div>
-              <div class="compact-form-grid">
+              <div class="revision-timeline" id="revisionTimeline" aria-live="polite"></div>
+            </section>
+
+            <section class="panel details-panel">
+              <div class="section-heading">
+                <div>
+                  <h2 id="activeProposalTitle">Proposta 01</h2>
+                  <p class="section-subtitle">Condições comerciais, itens e resumo</p>
+                </div>
+                <button class="secondary-button is-hidden" id="saleSimulationButton" type="button">Simulação de venda</button>
+              </div>
+              <div class="compact-form-grid proposal-terms-grid">
                 <label>
                   Pagamento
                   <input name="paymentTerms" type="text" placeholder="30 dias" />
+                </label>
+                <label>
+                  Recebimento
+                  <select name="receiptMethod">
+                    <option value="transferencia_pix">Transferência Bancária/Pix</option>
+                    <option value="link_cielo">Link de Pagamento Cielo</option>
+                    <option value="especie">Em espécie</option>
+                    <option value="a_combinar">A combinar</option>
+                  </select>
+                </label>
+                <label>
+                  Conta
+                  <select name="receiptAccountId"></select>
                 </label>
                 <label>
                   Entrega
@@ -242,6 +303,7 @@
                   <input name="freightType" type="text" placeholder="CIF / FOB" />
                 </label>
               </div>
+              <div class="selected-sale-simulation is-hidden" id="selectedSaleSimulationSummary"></div>
               <label class="full-label">
                 Observações comerciais
                 <textarea name="notes" rows="3" placeholder="Inclua garantias, escopo, exclusões ou premissas relevantes."></textarea>
@@ -251,18 +313,26 @@
 
         </section>
 
-        <section class="panel item-panel" aria-label="Itens do orçamento">
+        <section class="panel item-panel" id="itemsPanel" aria-label="Itens do orçamento">
           <div class="section-heading">
-            <h2>Itens</h2>
-            <button class="secondary-button" id="addItemButton" type="button">Adicionar item</button>
+            <div>
+              <h2>Itens</h2>
+              <p class="section-subtitle" id="itemsSummary">Itens da proposta.</p>
+            </div>
+            <div class="panel-heading-actions">
+              <button class="secondary-button" id="addItemButton" type="button">Adicionar item</button>
+              <button class="ghost-button compact-button collapse-toggle-button" id="toggleItemsButton" type="button" title="Reduzir itens" aria-label="Reduzir itens" aria-expanded="true">↑</button>
+            </div>
           </div>
 
-          <div class="table-wrap">
-            <table>
+          <div class="items-panel-content" id="itemsPanelContent">
+            <div class="table-wrap">
+            <table class="items-table">
               <thead>
                 <tr>
                   <th>Código</th>
                   <th>Descrição</th>
+                  <th>Adc.</th>
                   <th>Qtd.</th>
                   <th>NCM</th>
                   <th>Preço líquido</th>
@@ -276,13 +346,158 @@
               </thead>
               <tbody id="itemsBody"></tbody>
             </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel proposal-attachments-panel" id="proposalAttachmentsPanel">
+          <div class="attachment-panel-header">
+            <div>
+              <h3>Anexos da proposta</h3>
+              <p id="proposalAttachmentsSummary">Catálogos, fichas técnicas e materiais complementares.</p>
+            </div>
+            <div class="attachment-panel-actions">
+              <label class="secondary-button file-button">
+                Anexar arquivo
+                <input id="proposalAttachmentInput" type="file" accept=".pdf,image/*" multiple />
+              </label>
+              <button class="ghost-button compact-button collapse-toggle-button" id="toggleProposalAttachmentsButton" type="button" title="Expandir anexos" aria-label="Expandir anexos" aria-expanded="false">↓</button>
+            </div>
+          </div>
+          <div class="proposal-attachments-content" id="proposalAttachmentsContent">
+            <div class="proposal-attachments-list" id="proposalAttachmentsList"></div>
+          </div>
+        </section>
+
+        <div class="modal-backdrop is-hidden" id="itemDescriptionModal" role="dialog" aria-modal="true" aria-labelledby="itemDescriptionTitle">
+          <section class="modal-panel description-modal">
+            <header class="modal-header">
+              <div>
+                <p class="eyebrow">Item da proposta</p>
+                <h2 id="itemDescriptionTitle">Descrição comercial</h2>
+              </div>
+              <button class="icon-button" id="closeItemDescriptionButton" type="button" title="Fechar" aria-label="Fechar">x</button>
+            </header>
+            <div class="description-editor-grid">
+              <label>
+                Descrição resumida / sistêmica
+                <input id="itemDescriptionSummary" type="text" />
+              </label>
+              <label>
+                Descrição comercial completa
+                <textarea id="itemCommercialDescription" rows="10"></textarea>
+              </label>
+            </div>
+            <footer class="modal-actions">
+              <button class="ghost-button" id="cancelItemDescriptionButton" type="button">Cancelar</button>
+              <button class="primary-button" id="saveItemDescriptionButton" type="button">Salvar descrição</button>
+            </footer>
+          </section>
+        </div>
+
+        <div class="modal-backdrop is-hidden" id="pdfResultModal" role="dialog" aria-modal="true" aria-labelledby="pdfResultTitle">
+          <section class="modal-panel pdf-result-modal">
+            <header class="modal-header">
+              <div>
+                <p class="eyebrow">Arquivo gerado</p>
+                <h2 id="pdfResultTitle">PDF da proposta</h2>
+              </div>
+              <button class="icon-button" id="closePdfResultButton" type="button" title="Fechar" aria-label="Fechar">x</button>
+            </header>
+            <p class="pdf-result-filename" id="pdfResultFilename"></p>
+            <footer class="modal-actions">
+              <a class="ghost-button" id="pdfResultOpenButton" href="#" target="_blank" rel="noopener">Abrir PDF</a>
+              <a class="primary-button" id="pdfResultDownloadButton" href="#" download>Baixar PDF</a>
+            </footer>
+          </section>
+        </div>
+
+        <section class="panel freight-simulator-panel is-collapsed" id="freightSimulatorPanel" aria-label="Simulador de frete">
+          <div class="section-heading">
+            <div>
+              <h2>Simulador custo frete</h2>
+              <p class="section-subtitle">Cálculo de frete, seguro e tributos para aplicar na proposta.</p>
+            </div>
+            <button class="icon-button collapse-toggle-button" id="toggleFreightSimulatorButton" type="button" title="Expandir simulador de frete" aria-label="Expandir simulador de frete" aria-expanded="false">↓</button>
+          </div>
+
+          <div class="freight-simulator-content" id="freightSimulatorContent">
+            <div class="topbar-actions freight-simulator-actions">
+              <button class="ghost-button" id="useSelectedQuoteFreightButton" type="button">Usar proposta atual</button>
+              <button class="primary-button" id="applyFreightToQuoteButton" type="button">Aplicar na proposta</button>
+            </div>
+
+            <div class="freight-simulator-grid">
+              <label>
+                Valor da NF
+                <input data-freight-sim-field="invoiceValue" type="text" inputmode="decimal" />
+              </label>
+              <label>
+                Frete base
+                <input data-freight-sim-field="baseFreight" type="text" inputmode="decimal" />
+              </label>
+              <label>
+                UF destino
+                <input data-freight-sim-field="destinationUf" type="text" maxlength="2" />
+              </label>
+              <label>
+                Seguro %
+                <input data-freight-sim-field="insuranceRate" type="text" inputmode="decimal" />
+              </label>
+              <label>
+                Tarifa %
+                <input data-freight-sim-field="operationalRate" type="text" inputmode="decimal" />
+              </label>
+              <label>
+                Tipo
+                <select data-freight-sim-field="type">
+                  <option value="CIF">CIF</option>
+                  <option value="FOB">FOB</option>
+                  <option value="RETIRADA">Retirada</option>
+                  <option value="A COMBINAR">A combinar</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="freight-result-grid">
+              <div class="summary-card">
+                <span>TX seguradora</span>
+                <strong id="freightInsuranceValue">R$ 0,00</strong>
+              </div>
+              <div class="summary-card">
+                <span id="freightIcmsLabel">ICMS</span>
+                <strong id="freightIcmsValue">R$ 0,00</strong>
+              </div>
+              <div class="summary-card">
+                <span>Tarifa operacional</span>
+                <strong id="freightOperationalValue">R$ 0,00</strong>
+              </div>
+              <div class="summary-card">
+                <span>Total tributos</span>
+                <strong id="freightTaxesValue">R$ 0,00</strong>
+              </div>
+              <div class="summary-card">
+                <span>Total tx + tributos</span>
+                <strong id="freightSurchargesValue">R$ 0,00</strong>
+              </div>
+              <div class="summary-card is-total">
+                <span>Valor total do frete</span>
+                <strong id="freightGrandValue">R$ 0,00</strong>
+              </div>
+              <div class="summary-card">
+                <span>% do pedido</span>
+                <strong id="freightOrderPercent">0%</strong>
+              </div>
+            </div>
           </div>
         </section>
 
         <section class="panel summary-panel summary-panel-bottom" aria-label="Resumo financeiro">
           <div class="section-heading">
             <h2>Resumo do orçamento</h2>
-            <span class="quote-pill" id="statusPill">Rascunho</span>
+            <div class="summary-heading-actions">
+              <span class="quote-pill" id="statusPill">Rascunho</span>
+            </div>
           </div>
 
           <div class="summary-card-grid">
@@ -328,7 +543,7 @@
             </div>
             <div class="topbar-actions">
               <button class="ghost-button" id="openSelectedProposalButton" type="button">Abrir proposta selecionada</button>
-              <button class="primary-button" id="newQuoteListButton" type="button">Nova proposta</button>
+              <button class="primary-button" id="newQuoteListButton" type="button">Novo orçamento</button>
             </div>
           </header>
 
@@ -392,8 +607,359 @@
             </div>
           </section>
         </section>
+
+        <section class="screen is-hidden" id="companiesScreen">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Base comercial</p>
+              <h1>Empresas</h1>
+            </div>
+            <div class="topbar-actions">
+              <button class="primary-button" id="addCompanyButton" type="button">Nova empresa</button>
+            </div>
+          </header>
+
+          <section class="stat-grid company-stat-grid" aria-label="Resumo das empresas">
+            <article class="stat-card">
+              <span>Empresas cadastradas</span>
+              <strong id="companyCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Regimes tributários</span>
+              <strong id="companyRegimeCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Com dados bancários</span>
+              <strong id="companyBankCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Empresa padrão</span>
+              <strong id="defaultCompanyName">-</strong>
+            </article>
+          </section>
+
+          <section class="panel list-panel companies-panel" aria-label="Cadastro de empresas">
+            <div class="section-heading">
+              <h2>Dados cadastrais e bancários</h2>
+              <div class="save-state" id="companySaveState">Salvo localmente</div>
+            </div>
+
+            <div class="table-wrap company-table-wrap">
+              <table class="companies-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Logo</th>
+                    <th>Nome</th>
+                    <th>Regime</th>
+                    <th>CNPJ</th>
+                    <th>IE</th>
+                    <th>Endereço</th>
+                    <th>Nº</th>
+                    <th>Bairro</th>
+                    <th>Cidade</th>
+                    <th>UF</th>
+                    <th>CEP</th>
+                    <th>Telefone</th>
+                    <th>E-mail</th>
+                    <th>Banco</th>
+                    <th>Agência</th>
+                    <th>Conta</th>
+                    <th>PIX</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="companiesBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen is-hidden" id="representativesScreen">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Base comercial</p>
+              <h1>Representantes</h1>
+            </div>
+            <div class="topbar-actions">
+              <button class="primary-button" id="addRepresentativeButton" type="button">Novo representante</button>
+            </div>
+          </header>
+
+          <section class="stat-grid representative-stat-grid" aria-label="Resumo dos representantes">
+            <article class="stat-card">
+              <span>Representantes</span>
+              <strong id="representativeCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Comissão média</span>
+              <strong id="averageCommissionRate">0%</strong>
+            </article>
+            <article class="stat-card">
+              <span>Com dados bancários</span>
+              <strong id="representativeBankCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Clientes vinculados</span>
+              <strong id="representedClientCount">0</strong>
+            </article>
+          </section>
+
+          <section class="panel list-panel representatives-panel" aria-label="Cadastro de representantes">
+            <div class="section-heading">
+              <h2>Dados básicos, comissão e pagamento</h2>
+              <div class="save-state" id="representativeSaveState">Salvo localmente</div>
+            </div>
+
+            <div class="table-wrap representative-table-wrap">
+              <table class="representatives-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>CNPJ/CPF</th>
+                    <th>Telefone</th>
+                    <th>E-mail</th>
+                    <th>Clientes representados</th>
+                    <th>Comissão %</th>
+                    <th>Banco</th>
+                    <th>Agência</th>
+                    <th>Conta</th>
+                    <th>PIX</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="representativesBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen is-hidden" id="commissionsScreen">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Relatórios comerciais</p>
+              <h1>Comissões</h1>
+            </div>
+            <div class="topbar-actions">
+              <button class="primary-button" id="addManualCommissionButton" type="button">Lançar comissão</button>
+              <select id="commissionStatusFilter" aria-label="Filtro de comissões">
+                <option value="todos">Todas</option>
+                <option value="a_pagar">A pagar</option>
+                <option value="pago">Pagas</option>
+              </select>
+            </div>
+          </header>
+
+          <section class="stat-grid commission-stat-grid" aria-label="Resumo de comissões">
+            <article class="stat-card">
+              <span>A pagar</span>
+              <strong id="commissionPendingTotal">R$ 0,00</strong>
+            </article>
+            <article class="stat-card">
+              <span>Pagas</span>
+              <strong id="commissionPaidTotal">R$ 0,00</strong>
+            </article>
+            <article class="stat-card">
+              <span>Itens a pagar</span>
+              <strong id="commissionPendingCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Itens pagos</span>
+              <strong id="commissionPaidCount">0</strong>
+            </article>
+          </section>
+
+          <section class="panel list-panel commissions-panel" aria-label="Relatório de comissões">
+            <div class="section-heading">
+              <h2>Comissões automáticas e manuais</h2>
+              <div class="save-state" id="commissionSaveState">Salvo localmente</div>
+            </div>
+
+            <div class="table-wrap commission-table-wrap">
+              <table class="commissions-table">
+                <thead>
+                  <tr>
+                    <th>Proposta</th>
+                    <th>Cliente</th>
+                    <th>Representante</th>
+                    <th>Total proposta</th>
+                    <th>Comissão %</th>
+                    <th>Valor comissão</th>
+                    <th>Status</th>
+                    <th>Data pagamento</th>
+                    <th>Observações</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="commissionsBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen is-hidden" id="freightScreen">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Base comercial</p>
+              <h1>Regra de Frete</h1>
+            </div>
+            <div class="topbar-actions">
+              <button class="primary-button" id="addFreightButton" type="button">Nova regra</button>
+            </div>
+          </header>
+
+          <section class="stat-grid freight-stat-grid" aria-label="Resumo de fretes">
+            <article class="stat-card">
+              <span>Regras cadastradas</span>
+              <strong id="freightRuleCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Com transportadora</span>
+              <strong id="freightCarrierCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Menor prazo</span>
+              <strong id="freightMinDeadline">-</strong>
+            </article>
+            <article class="stat-card">
+              <span>Maior prazo</span>
+              <strong id="freightMaxDeadline">-</strong>
+            </article>
+          </section>
+
+          <section class="panel list-panel freight-panel" aria-label="Regras de frete">
+            <div class="section-heading">
+              <h2>Base de regras</h2>
+              <div class="save-state" id="freightSaveState">Salvo localmente</div>
+            </div>
+
+            <div class="table-wrap freight-table-wrap">
+              <table class="freight-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Tipo</th>
+                    <th>Transportadora</th>
+                    <th>UF origem</th>
+                    <th>UF destino</th>
+                    <th>Prazo</th>
+                    <th>Valor mínimo</th>
+                    <th>% frete</th>
+                    <th>Observações</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="freightBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen is-hidden" id="taxRulesScreen">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Módulo Comercial</p>
+              <h1>Regra Fiscal</h1>
+            </div>
+            <div class="topbar-actions">
+              <button class="ghost-button" id="exportTaxRulesButton" type="button">Exportar regras</button>
+              <label class="ghost-button file-button">
+                Importar regras
+                <input id="importTaxRulesInput" type="file" accept="application/json,.js" />
+              </label>
+              <button class="ghost-button" id="resetTaxRulesButton" type="button">Restaurar padrão</button>
+              <button class="primary-button" id="addTaxRuleButton" type="button">Nova regra</button>
+            </div>
+          </header>
+
+          <section class="stat-grid tax-stat-grid" aria-label="Resumo fiscal">
+            <article class="stat-card">
+              <span>Regras ativas</span>
+              <strong id="taxRuleCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Empresas</span>
+              <strong id="taxCompanyCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>UFs</span>
+              <strong id="taxUfCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>NCMs</span>
+              <strong id="taxNcmCount">0</strong>
+            </article>
+          </section>
+
+          <section class="panel list-panel tax-rules-panel" aria-label="Tabela de regra fiscal">
+            <div class="section-heading">
+              <h2>Tabela de impostos</h2>
+              <div class="save-state" id="taxSaveState">Salvo localmente</div>
+            </div>
+
+            <div class="tax-toolbar">
+              <label>
+                Empresa
+                <select id="taxCompanyFilter"></select>
+              </label>
+              <label>
+                UF
+                <select id="taxUfFilter"></select>
+              </label>
+              <label class="span-2">
+                Buscar
+                <input id="taxRuleSearch" type="search" placeholder="NCM, grupo, empresa ou UF" autocomplete="off" />
+              </label>
+            </div>
+
+            <div class="table-wrap tax-table-wrap">
+              <table class="tax-rules-table">
+                <thead>
+                  <tr>
+                    <th>Empresa</th>
+                    <th>UF</th>
+                    <th>NCM</th>
+                    <th>Grupo fiscal</th>
+                    <th>BC ICMS %</th>
+                    <th>ICMS %</th>
+                    <th>IPI %</th>
+                    <th>PIS/COFINS %</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="taxRulesBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen is-hidden" id="pdfPreviewScreen">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Prévia da proposta</p>
+              <h1>Modelo PDF</h1>
+            </div>
+            <div class="topbar-actions">
+              <label class="pdf-orientation-control">
+                Formato
+                <select id="pdfOrientationSelect">
+                  <option value="landscape">Horizontal</option>
+                  <option value="portrait">Vertical</option>
+                </select>
+              </label>
+              <button class="ghost-button" id="backFromPdfPreviewButton" type="button">Voltar para proposta</button>
+              <button class="primary-button" id="printPreviewButton" type="button">Baixar PDF da prévia</button>
+            </div>
+          </header>
+
+          <section class="pdf-preview-shell" aria-label="Prévia do PDF">
+            <div class="pdf-preview-body" id="pdfPreviewBody"></div>
+          </section>
+        </section>
       </main>
     </div>
+
+    <article class="print-proposal" id="printProposal" aria-label="Proposta para PDF"></article>
 
     <template id="quoteItemTemplate">
       <button class="quote-card" type="button">
@@ -409,18 +975,285 @@
     <template id="lineItemTemplate">
       <tr>
         <td><input data-field="code" type="text" placeholder="1634.1" /></td>
-        <td><input data-field="description" type="text" placeholder="Produto" /></td>
-        <td><input data-field="quantity" type="number" min="0" step="0.01" /></td>
-        <td><input data-field="ncm" type="text" placeholder="9403.20.90" /></td>
-        <td><input data-field="liquidPrice" type="number" min="0" step="0.01" /></td>
-        <td><input data-field="icmsBase" type="number" min="0" step="0.0001" /></td>
-        <td><input data-field="icms" type="number" min="0" step="0.0001" /></td>
-        <td><input data-field="ipi" type="number" min="0" step="0.0001" /></td>
+        <td><input data-field="description" type="text" placeholder="Resumo interno" /></td>
+        <td><button class="icon-button description-button" data-role="edit-description" type="button" title="Adicionar descrição comercial" aria-label="Adicionar descrição comercial">+</button></td>
+        <td><input data-field="quantity" class="quantity-input" type="number" min="0" step="0.01" /></td>
+        <td class="ncm-suggest-cell">
+          <input data-field="ncm" class="ncm-input" type="text" placeholder="9403.20.90" autocomplete="off" />
+          <div class="ncm-suggestion-menu is-hidden" data-role="ncm-suggestions"></div>
+        </td>
+        <td><input data-field="liquidPrice" class="price-input" type="text" inputmode="decimal" /></td>
+        <td><input data-field="icmsBase" class="tax-input tax-input-base" type="number" min="0" step="0.0001" /></td>
+        <td><input data-field="icms" class="tax-input" type="number" min="0" step="0.01" /></td>
+        <td><input data-field="ipi" class="tax-input tax-input-small" type="number" min="0" step="0.01" /></td>
         <td class="money-cell" data-role="unitTotal">R$ 0,00</td>
         <td class="money-cell" data-role="lineTotal">R$ 0,00</td>
         <td><button class="icon-button danger" data-role="remove" type="button" title="Remover item" aria-label="Remover item">x</button></td>
       </tr>
     </template>
+
+    <template id="taxRuleTemplate">
+      <tr>
+        <td><input data-tax-field="company" type="text" /></td>
+        <td><input data-tax-field="uf" type="text" maxlength="2" /></td>
+        <td><input data-tax-field="ncm" type="text" placeholder="9403.20.90" list="ncmOptions" /></td>
+        <td><input data-tax-field="description" type="text" /></td>
+        <td><input data-tax-field="icmsBase" type="number" min="0" step="0.0001" /></td>
+        <td><input data-tax-field="icms" type="number" min="0" step="0.0001" /></td>
+        <td><input data-tax-field="ipi" type="number" min="0" step="0.0001" /></td>
+        <td><input data-tax-field="pisCofins" type="number" min="0" step="0.0001" /></td>
+        <td><button class="icon-button danger" data-role="remove-tax-rule" type="button" title="Remover regra" aria-label="Remover regra">x</button></td>
+      </tr>
+    </template>
+
+    <template id="companyTemplate">
+      <tr>
+        <td><span class="table-text company-code-text" data-company-value="code"></span></td>
+        <td>
+          <div class="company-logo-cell">
+            <div class="company-logo-preview" data-role="company-logo-preview"></div>
+          </div>
+        </td>
+        <td><button class="company-name-link" data-role="open-company" type="button"></button></td>
+        <td><span class="table-text" data-company-value="taxRegime"></span></td>
+        <td><span class="table-text" data-company-value="cnpj"></span></td>
+        <td><span class="table-text" data-company-value="stateRegistration"></span></td>
+        <td><span class="table-text" data-company-value="address"></span></td>
+        <td><span class="table-text" data-company-value="addressNumber"></span></td>
+        <td><span class="table-text" data-company-value="district"></span></td>
+        <td><span class="table-text" data-company-value="city"></span></td>
+        <td><span class="table-text" data-company-value="state"></span></td>
+        <td><span class="table-text" data-company-value="zipCode"></span></td>
+        <td><span class="table-text" data-company-value="phone"></span></td>
+        <td><span class="table-text" data-company-value="email"></span></td>
+        <td><span class="table-text" data-company-value="bankName"></span></td>
+        <td><span class="table-text" data-company-value="bankAgency"></span></td>
+        <td><span class="table-text" data-company-value="bankAccount"></span></td>
+        <td><span class="table-text" data-company-value="pixKey"></span></td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-button danger" data-role="remove-company" type="button" title="Remover empresa" aria-label="Remover empresa">x</button>
+          </div>
+        </td>
+      </tr>
+    </template>
+
+    <div class="modal-backdrop is-hidden" id="companyDetailsModal" role="dialog" aria-modal="true" aria-labelledby="companyDetailsTitle">
+      <section class="modal-panel company-details-modal">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">Cadastro da empresa</p>
+            <h2 id="companyDetailsTitle">Empresa</h2>
+          </div>
+          <button class="icon-button" id="closeCompanyDetailsButton" type="button" title="Fechar" aria-label="Fechar">x</button>
+        </header>
+
+        <section class="detail-subsection">
+          <div class="company-logo-editor">
+            <div class="company-logo-preview company-logo-preview-large" data-role="company-logo-preview"></div>
+            <label class="ghost-button file-button company-logo-button">
+              Alterar logo
+              <input data-role="company-detail-logo-input" type="file" accept="image/*" />
+            </label>
+          </div>
+        </section>
+
+        <div class="compact-form-grid">
+          <label>Código<input data-company-detail-field="code" type="text" maxlength="3" /></label>
+          <label>Nome<input data-company-detail-field="name" type="text" /></label>
+          <label>
+            Regime
+            <select data-company-detail-field="taxRegime">
+              <option value="Lucro Presumido">Lucro Presumido</option>
+              <option value="Simples Nacional">Simples Nacional</option>
+              <option value="Lucro Real">Lucro Real</option>
+            </select>
+          </label>
+          <label>CNPJ<input data-company-detail-field="cnpj" type="text" /></label>
+          <label>IE<input data-company-detail-field="stateRegistration" type="text" /></label>
+          <label class="span-2">Endereço<input data-company-detail-field="address" type="text" /></label>
+          <label>Nº<input data-company-detail-field="addressNumber" type="text" /></label>
+          <label>Bairro<input data-company-detail-field="district" type="text" /></label>
+          <label>Cidade<input data-company-detail-field="city" type="text" /></label>
+          <label>UF<input data-company-detail-field="state" type="text" maxlength="2" /></label>
+          <label>CEP<input data-company-detail-field="zipCode" type="text" /></label>
+          <label>Telefone<input data-company-detail-field="phone" type="text" /></label>
+          <label>E-mail<input data-company-detail-field="email" type="email" /></label>
+        </div>
+
+        <section class="detail-subsection">
+          <div class="section-heading">
+            <h2>Contas bancárias</h2>
+            <button class="secondary-button" id="addCompanyBankAccountButton" type="button">Adicionar conta</button>
+          </div>
+          <div class="table-wrap">
+            <table class="bank-accounts-table">
+              <thead>
+                <tr>
+                  <th>Principal</th>
+                  <th>Logo</th>
+                  <th>Descrição</th>
+                  <th>Banco</th>
+                  <th>Agência</th>
+                  <th>Conta</th>
+                  <th>PIX</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="companyBankAccountsBody"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="detail-subsection">
+          <div class="section-heading">
+            <div>
+              <h2>Contas de pagamento</h2>
+              <p class="section-subtitle">Base para links de pagamento e futura integração Cielo</p>
+            </div>
+            <button class="secondary-button" id="addCompanyPaymentAccountButton" type="button">Adicionar conta</button>
+          </div>
+          <div class="table-wrap">
+            <table class="payment-accounts-table">
+              <thead>
+                <tr>
+                  <th>Principal</th>
+                  <th>Logo</th>
+                  <th>Descrição</th>
+                  <th>Ambiente</th>
+                  <th>Estabelecimento</th>
+                  <th>Nome na fatura</th>
+                  <th>Taxas</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="companyPaymentAccountsBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <div class="modal-backdrop is-hidden" id="paymentRatesModal" role="dialog" aria-modal="true" aria-labelledby="paymentRatesTitle">
+      <section class="modal-panel payment-rates-modal">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">Cielo</p>
+            <h2 id="paymentRatesTitle">Taxas da conta de pagamento</h2>
+          </div>
+          <button class="icon-button" id="closePaymentRatesButton" type="button" title="Fechar" aria-label="Fechar">x</button>
+        </header>
+        <div class="table-wrap">
+          <table class="payment-rates-table">
+            <thead>
+              <tr>
+                <th>Tipo de pagamento</th>
+                <th>Visa</th>
+                <th>Mastercard</th>
+                <th>Elo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="paymentRatesBody"></tbody>
+          </table>
+        </div>
+        <footer class="modal-actions">
+          <button class="secondary-button" id="addPaymentRateRowButton" type="button">Adicionar linha</button>
+          <button class="primary-button" id="closePaymentRatesFooterButton" type="button">Concluir</button>
+        </footer>
+      </section>
+    </div>
+
+    <div class="modal-backdrop is-hidden" id="saleSimulationModal" role="dialog" aria-modal="true" aria-labelledby="saleSimulationTitle">
+      <section class="modal-panel sale-simulation-modal">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">Cielo</p>
+            <h2 id="saleSimulationTitle">Simule uma venda</h2>
+            <p class="section-subtitle">Saiba quanto o estabelecimento irá receber.</p>
+          </div>
+          <button class="icon-button" id="closeSaleSimulationButton" type="button" title="Fechar" aria-label="Fechar">x</button>
+        </header>
+
+        <div class="sale-simulation-grid">
+          <label>
+            Valor da venda
+            <input id="saleSimulationValue" type="text" inputmode="decimal" />
+          </label>
+          <label>
+            Modalidade
+            <select id="saleSimulationModality">
+              <option value="Link de Pagamento">Link de Pagamento</option>
+            </select>
+          </label>
+          <label>
+            Bandeira do cartão
+            <select id="saleSimulationBrand">
+              <option value="visa">Visa</option>
+              <option value="mastercard">Mastercard</option>
+              <option value="elo">Elo</option>
+            </select>
+          </label>
+          <label>
+            Tipo de venda
+            <select id="saleSimulationType"></select>
+          </label>
+        </div>
+
+        <div class="sale-simulation-result" id="saleSimulationResult">
+          <div class="sale-simulation-empty">
+            <strong>Informe os dados e gere a simulação.</strong>
+            <span>As taxas serão buscadas na conta Cielo selecionada nesta proposta.</span>
+          </div>
+        </div>
+
+        <footer class="modal-actions">
+          <button class="ghost-button" id="cancelSaleSimulationButton" type="button">Cancelar</button>
+          <button class="primary-button" id="generateSaleSimulationButton" type="button">Gerar simulação</button>
+          <button class="secondary-button" id="selectSaleSimulationButton" type="button" disabled>Selecionar para proposta</button>
+        </footer>
+      </section>
+    </div>
+
+    <template id="representativeTemplate">
+      <tr>
+        <td><input data-representative-field="name" type="text" /></td>
+        <td><input data-representative-field="cnpj" type="text" /></td>
+        <td><input data-representative-field="phone" type="text" /></td>
+        <td><input data-representative-field="email" type="email" /></td>
+        <td><input data-representative-field="representedClients" type="text" placeholder="Cliente A; Cliente B" /></td>
+        <td><input data-representative-field="commissionRate" type="number" min="0" step="0.01" /></td>
+        <td><input data-representative-field="bankName" type="text" /></td>
+        <td><input data-representative-field="bankAgency" type="text" /></td>
+        <td><input data-representative-field="bankAccount" type="text" /></td>
+        <td><input data-representative-field="pixKey" type="text" /></td>
+        <td><button class="icon-button danger" data-role="remove-representative" type="button" title="Remover representante" aria-label="Remover representante">x</button></td>
+      </tr>
+    </template>
+
+    <template id="freightTemplate">
+      <tr>
+        <td><input data-freight-field="name" type="text" /></td>
+        <td>
+          <select data-freight-field="type">
+            <option value="CIF">CIF</option>
+            <option value="FOB">FOB</option>
+            <option value="RETIRADA">Retirada</option>
+            <option value="A COMBINAR">A combinar</option>
+          </select>
+        </td>
+        <td><input data-freight-field="carrier" type="text" /></td>
+        <td><input data-freight-field="originUf" type="text" maxlength="2" /></td>
+        <td><input data-freight-field="destinationUf" type="text" maxlength="2" /></td>
+        <td><input data-freight-field="deadline" type="text" placeholder="30 dias" /></td>
+        <td><input data-freight-field="minimumValue" type="number" min="0" step="0.01" /></td>
+        <td><input data-freight-field="rate" type="number" min="0" step="0.01" /></td>
+        <td><input data-freight-field="notes" type="text" /></td>
+        <td><button class="icon-button danger" data-role="remove-freight" type="button" title="Remover frete" aria-label="Remover frete">x</button></td>
+      </tr>
+    </template>
+
+    <datalist id="ncmOptions"></datalist>
 
     <script src="./tax-rules.js"></script>
     <script src="./app.js"></script>
